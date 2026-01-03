@@ -1,0 +1,275 @@
+openapi: 3.0.3
+info:
+  title: Railway Management System - Train APIs
+  version: 1.0.0
+  description: Train APIs (spec kept separate from code)
+servers:
+  - url: /
+tags:
+  - name: Trains
+    description: Train management endpoints
+paths:
+  /api/v1/trains:
+    get:
+      operationId: listTrains
+      tags: [ Trains ]
+      summary: List all trains
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrainDTO'
+    post:
+      operationId: createTrain
+      tags: [ Trains ]
+      summary: Create a train
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrainDTO'
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location:
+              description: URI of the created train resource
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainDTO'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/v1/trains/{id}:
+    get:
+      operationId: getTrainById
+      tags: [ Trains ]
+      summary: Get train by ID
+      parameters:
+        - $ref: '#/components/parameters/TrainIdParam'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainDTO'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: updateTrain
+      tags: [ Trains ]
+      summary: Update a train
+      parameters:
+        - $ref: '#/components/parameters/TrainIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrainDTO'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainDTO'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: deleteTrain
+      tags: [ Trains ]
+      summary: Delete a train
+      parameters:
+        - $ref: '#/components/parameters/TrainIdParam'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/trains/number/{trainNumber}:
+    get:
+      operationId: getTrainByNumber
+      tags: [ Trains ]
+      summary: Get train by number
+      parameters:
+        - $ref: '#/components/parameters/TrainNumberParam'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainDTO'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/trains/{id}/coaches:
+    get:
+      operationId: listTrainCoaches
+      tags: [ Trains ]
+      summary: List coach assignments for a train
+      parameters:
+        - $ref: '#/components/parameters/TrainIdParam'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrainCoachAssignment'
+  /api/v1/trains/{id}/coaches/{coachTypeId}:
+    post:
+      operationId: addTrainCoach
+      tags: [ Trains ]
+      summary: Add a coach assignment to a train
+      parameters:
+        - $ref: '#/components/parameters/TrainIdParam'
+        - name: coachTypeId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+        - name: coachNumber
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 50
+        - name: position
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainCoachAssignment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/v1/trains/coaches/{assignmentId}:
+    delete:
+      operationId: removeTrainCoach
+      tags: [ Trains ]
+      summary: Remove a coach assignment by id
+      parameters:
+        - name: assignmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+components:
+  parameters:
+    TrainIdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int32
+      description: Train identifier
+    TrainNumberParam:
+      name: trainNumber
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+      description: Unique train number
+  responses:
+    NotFound:
+      description: Resource not found
+    BadRequest:
+      description: Validation failed or bad request
+    NoContent:
+      description: No Content
+    Conflict:
+      description: Conflict
+  schemas:
+    TrainDTO:
+      type: object
+      properties:
+        trainId:
+          type: integer
+          format: int32
+          readOnly: true
+        trainName:
+          type: string
+          maxLength: 255
+        trainNumber:
+          type: string
+          maxLength: 255
+        trainCategory:
+          type: string
+          enum: [ EXPRESS, LOCAL, FREIGHT, HIGH_SPEED ]
+        inService:
+          type: boolean
+        coaches:
+          type: array
+          items:
+            $ref: '#/components/schemas/CoachAssignmentDTO'
+      required:
+        - trainName
+        - trainNumber
+        - trainCategory
+        - inService
+    CoachAssignmentDTO:
+      type: object
+      properties:
+        assignmentId:
+          type: integer
+          format: int32
+        coachTypeId:
+          type: integer
+          format: int32
+        coachTypeName:
+          type: string
+        position:
+          type: integer
+          format: int32
+    TrainCoachAssignment:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        trainId:
+          type: integer
+          format: int32
+        coachTypeId:
+          type: integer
+          format: int32
+        coachTypeName:
+          type: string
+        coachNumber:
+          type: string
+          maxLength: 50
+        position:
+          type: integer
+          format: int32
+
