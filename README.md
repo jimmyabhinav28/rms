@@ -81,13 +81,30 @@ configurations containing secrets.
 
 This project includes a multi-stage Dockerfile that builds the app with Maven and runs it on a slim Java 21 JRE image.
 
-- Build the image (run from the project root where the Dockerfile is located):
+### Required environment variables (container will not start unless all are set)
+The Docker entrypoint validates these variables at startup:
+- APPLICATION_SERVICE_VERSION
+- SERVER_PORT
+- DB_HOST
+- DB_PORT
+- DB_NAME
+- DB_USER
+- DB_PASSWORD
+- JPA_SHOW_SQL
+- FLYWAY_URL
+- FLYWAY_USER
+- FLYWAY_PASSWORD
+- Optional: JAVA_OPTS (JVM tuning flags)
+
+If any required variable is missing, the container exits with an error indicating which ones are missing.
+
+### Build the image (run from the project root where the Dockerfile is located)
 
 ```powershell
 docker build -t rms:latest .
 ```
 
-- Run the container (map port 8080 and pass required environment variables):
+### Run the container (map port and pass all required environment variables)
 
 ```powershell
 # Replace values accordingly
@@ -99,6 +116,10 @@ $env:DB_NAME="rms"
 $env:DB_USER="rms_user"
 $env:DB_PASSWORD="change_me"
 $env:JPA_SHOW_SQL="false"
+$env:FLYWAY_URL="jdbc:mysql://localhost:3306/rms"
+$env:FLYWAY_USER="rms_user"
+$env:FLYWAY_PASSWORD="change_me"
+$env:JAVA_OPTS="-Xms256m -Xmx512m"
 
 docker run --rm -p 8080:8080 `
   -e APPLICATION_SERVICE_VERSION=$env:APPLICATION_SERVICE_VERSION `
@@ -109,25 +130,28 @@ docker run --rm -p 8080:8080 `
   -e DB_USER=$env:DB_USER `
   -e DB_PASSWORD=$env:DB_PASSWORD `
   -e JPA_SHOW_SQL=$env:JPA_SHOW_SQL `
+  -e FLYWAY_URL=$env:FLYWAY_URL `
+  -e FLYWAY_USER=$env:FLYWAY_USER `
+  -e FLYWAY_PASSWORD=$env:FLYWAY_PASSWORD `
+  -e JAVA_OPTS=$env:JAVA_OPTS `
   rms:latest
 ```
 
-- Optional JVM tuning:
+### Optional JVM tuning
 
 ```powershell
 docker run --rm -p 8080:8080 -e JAVA_OPTS="-Xms256m -Xmx512m" rms:latest
 ```
 
-- Healthcheck (if Spring Boot Actuator is enabled):
-  - http://localhost:8080/actuator/health
-
 ### Notes
 - The Dockerfile uses Maven to build inside the container; no local Maven installation required.
-- Secrets (DB_USER/DB_PASSWORD) must be provided as environment variables; do not hardcode credentials.
-- If your database runs in another container, ensure networking is configured (e.g., same Docker network) and `DB_HOST` points to the DB service name.
+- Secrets (DB_USER/DB_PASSWORD/FLYWAY_PASSWORD) must be provided as environment variables; do not hardcode credentials.
+- If your database runs in another container, ensure networking is configured (e.g., same Docker network) and DB_HOST points to the DB service name.
+- Healthcheck (if Spring Boot Actuator is enabled): http://localhost:8080/actuator/health
 
 ### Troubleshooting
-- If the container exits immediately, check logs:
+- If the container exits immediately, it likely indicates missing required environment variables; set all listed above.
+- View logs for details:
 
 ```powershell
 docker logs <container-id>
@@ -139,12 +163,12 @@ docker logs <container-id>
 docker run --rm rms:latest sh -c "ls -lah /app"
 ```
 
-- Confirm the application port:
-  - The container exposes 8080. Ensure you map `-p 8080:8080` or change with `SERVER_PORT`.
+- Confirm the application port mapping:
+  - The container exposes 8080. Ensure you map -p 8080:8080 or change with SERVER_PORT.
 
 - MySQL connectivity:
-  - Ensure `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` are correct and reachable.
-  - If using Dockerized MySQL, consider a dedicated network and use the service name for `DB_HOST`.
+  - Ensure DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD are correct and reachable.
+  - If using Dockerized MySQL, consider a dedicated network and use the service name for DB_HOST.
 
 ## TODO
 

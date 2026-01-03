@@ -19,12 +19,29 @@ LABEL org.opencontainers.image.title="rms" \
       org.opencontainers.image.source="https://example.invalid/railways/rms" \
       org.opencontainers.image.version="${APPLICATION_SERVICE_VERSION}" \
       org.opencontainers.image.vendor="abhinav"
-ENV JAVA_OPTS=""
-ENV SERVER_PORT=8080
+
+# Document environment variables (values must be provided at runtime)
+ENV JAVA_OPTS="" \
+    APPLICATION_SERVICE_VERSION="" \
+    SERVER_PORT="" \
+    DB_HOST="" \
+    DB_PORT="" \
+    DB_NAME="" \
+    DB_USER="" \
+    DB_PASSWORD="" \
+    JPA_SHOW_SQL="" \
+    FLYWAY_URL="" \
+    FLYWAY_USER="" \
+    FLYWAY_PASSWORD=""
+
 WORKDIR /app
 
 # Copy the built jar
 COPY --from=build /app/target/*.jar /app/rms.jar
+
+# Copy entrypoint validator
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Expose the port (informative; use -p mapping at runtime)
 EXPOSE 8080
@@ -33,5 +50,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -qO- http://localhost:${SERVER_PORT}/actuator/health || exit 1
 
-# Run the app; env vars are passed through at runtime
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/rms.jar"]
+# Run the validator which then launches the app
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

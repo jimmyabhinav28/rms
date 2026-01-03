@@ -5,6 +5,7 @@ This project includes two Windows batch scripts to help you build Docker images 
 Scripts:
 - build-and-publish-image.bat — Build a Docker image from this project and publish it locally as a .tar in the `images` folder.
 - ecr-push.bat — Build an image from a subfolder under `images/` and push it to AWS Elastic Container Registry (ECR).
+- build_and_save_image.bat — Build the `rms` Docker image and save it as a `.tar` into a sibling `images` folder from a workspace root.
 
 ---
 
@@ -116,6 +117,58 @@ Builds a Docker image from a subfolder under `images/` (which must contain a `Do
 
 ---
 
+## build_and_save_image.bat
+
+Builds the `rms` Docker image from the project directory and saves it to a sibling `images` folder as a `.tar` file. Intended to be placed at the workspace root alongside `rms/` and `images/`.
+
+- Location: `rms\build_and_save_image.bat` (ensure the script runs from the workspace root where `rms` exists)
+- Output:
+  - Tarball: `images\<image_name>-<tag>.tar` (e.g., `images\rms-20260104-101530.tar`)
+
+### Prerequisites
+- Docker Desktop installed and `docker` available in PATH.
+- The `rms` folder must exist next to the script, and contain a valid `Dockerfile`.
+
+### Usage
+```powershell
+# From the workspace root containing the 'rms' folder
+# Defaults: image_name=rms, tag=current timestamp (yyyyMMdd-HHmmss)
+./build_and_save_image.bat [image_name] [tag]
+```
+
+### Parameters
+- `image_name` (optional): Name for the Docker image. Default: `rms`
+- `tag` (optional): Image tag. Default: current timestamp `yyyyMMdd-HHmmss`
+
+### Examples
+```powershell
+# Default name and timestamped tag
+./build_and_save_image.bat
+
+# Custom tag
+./build_and_save_image.bat rms 20260104-101530
+
+# Custom image name with timestamped tag
+./build_and_save_image.bat my-app
+
+# Custom image name and custom tag
+./build_and_save_image.bat my-app v1
+```
+
+### Behavior
+- Verifies `rms` directory exists at a known relative path.
+- Creates `images/` if it does not exist.
+- Builds image `<image_name>:<tag>` from `rms/Dockerfile`.
+- Saves the image to `images/<image_name>-<tag>.tar`.
+
+### Troubleshooting
+- `ERROR: Expected directory not found: "<path>\rms"` — Run the script from the workspace root where `rms` exists.
+- `ERROR: Docker not found in PATH.` — Install Docker Desktop and ensure `docker` is on PATH.
+- `ERROR: Docker build failed.` — Check Docker is running and the `Dockerfile` in `rms` is valid.
+- `ERROR: docker save failed.` — Ensure you have write permissions to the `images` directory and sufficient disk space.
+
+---
+
 ## Tips and workflow
 - Typical local build-and-publish:
 ```powershell
@@ -128,11 +181,15 @@ Builds a Docker image from a subfolder under `images/` (which must contain a `Do
 # then push it to ECR
 ./ecr-push.bat rms-app latest us-east-1
 ```
+- Save from workspace root (fixed name/tag):
+```powershell
+./build_and_save_image.bat
+```
 
 ## Notes
-- The local tarballs produced by `build-and-publish-image.bat` can be loaded on any Docker host:
+- The local tarballs produced by these scripts can be loaded on any Docker host:
 ```powershell
-docker load -i images\rms-app-20260103-153045.tar
+docker load -i images\<name>-<tag>.tar
 ```
 - To re-tag a loaded image for ECR:
 ```powershell
@@ -140,6 +197,5 @@ $account = "123456789012"
 $region = "us-east-1"
 $repo   = "rms-app"
 $tag    = "20260103-153045"
-docker tag %repo%:%tag% %account%.dkr.ecr.%region%.amazonaws.com/%repo%:%tag%
+docker tag $repo:$tag $account.dkr.ecr.$region.amazonaws.com/$repo:$tag
 ```
-
