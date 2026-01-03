@@ -45,5 +45,8 @@ build/
 # Ignore local environment files
 .env
 
+#ignore .run directory
+.run/
+
 # Ignore locally published Docker images (tarballs, etc.) at repo root
 /images/

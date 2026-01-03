@@ -3,15 +3,10 @@ set -eu
 
 # Required env vars (externalized parameters)
 REQUIRED_VARS="\
-APPLICATION_SERVICE_VERSION \
-SERVER_PORT \
 DB_HOST \
 DB_PORT \
-DB_NAME \
 DB_USER \
 DB_PASSWORD \
-JPA_SHOW_SQL \
-FLYWAY_URL \
 FLYWAY_USER \
 FLYWAY_PASSWORD\
 "
@@ -31,9 +26,28 @@ if [ "$missing" -ne 0 ]; then
   exit 2
 fi
 
+# Defaults for optional parameters
+: "${SERVER_PORT:=8080}"
+: "${DB_NAME:=rms}"
+
+# Compose JDBC URLs from env
+DATASOURCE_URL="jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}"
+FLYWAY_URL_COMPOSED="jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}"
+
+# Append Spring Boot properties to JAVA_OPTS so the app receives them at runtime
+JAVA_OPTS="${JAVA_OPTS:-} \
+  -Dserver.port=${SERVER_PORT} \
+  -Dspring.datasource.url=${DATASOURCE_URL} \
+  -Dspring.datasource.username=${DB_USER} \
+  -Dspring.datasource.password=${DB_PASSWORD} \
+  -Dspring.flyway.url=${FLYWAY_URL_COMPOSED} \
+  -Dspring.flyway.user=${FLYWAY_USER} \
+  -Dspring.flyway.password=${FLYWAY_PASSWORD}"
+
 # Optional info
 echo "[INFO] All required environment variables are set. Starting application..."
+echo "[INFO] SERVER_PORT=${SERVER_PORT}"
+echo "[INFO] DB_URL=${DATASOURCE_URL}"
 
 # Launch the application
 exec java $JAVA_OPTS -jar /app/rms.jar
-

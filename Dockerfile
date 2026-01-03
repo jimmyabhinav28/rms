@@ -14,13 +14,17 @@ RUN mvn -q -e -DskipTests clean package
 
 # ---- Runtime stage ----
 FROM eclipse-temurin:21-jre-alpine
+
+# Define build-time application version for label to avoid UndefinedVar warning
+ARG APPLICATION_SERVICE_VERSION="1.0.0"
+RUN echo "[DEBUG] Building RMS image with APPLICATION_SERVICE_VERSION=${APPLICATION_SERVICE_VERSION}"
 LABEL org.opencontainers.image.title="rms" \
       org.opencontainers.image.description="Railway Management System" \
       org.opencontainers.image.source="https://example.invalid/railways/rms" \
       org.opencontainers.image.version="${APPLICATION_SERVICE_VERSION}" \
       org.opencontainers.image.vendor="abhinav"
 
-# Document environment variables (values must be provided at runtime)
+# Document environment variables ,values must be provided at runtime
 ENV JAVA_OPTS="" \
     APPLICATION_SERVICE_VERSION="" \
     SERVER_PORT="" \
@@ -43,12 +47,18 @@ COPY --from=build /app/target/*.jar /app/rms.jar
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# Expose the port (informative; use -p mapping at runtime)
+# Install curl for healthcheck busybox wget may be missing
+RUN apk add --no-cache curl
+
+# Runtime debug: list app contents and show Java version
+RUN echo "[DEBUG] Contents of /app:" && ls -lah /app && echo "[DEBUG] Java version:" && java -version
+
+# Expose the port
 EXPOSE 8080
 
-# Healthcheck (optional)
+# Healthcheck using curl
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD wget -qO- http://localhost:${SERVER_PORT}/actuator/health || exit 1
-
-# Run the validator which then launches the app
+  CMD curl -sf "http://localhost:${SERVER_PORT:-8080}/actuator/health" || exit 1
+#
+## Run the validator which then launches the app
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
